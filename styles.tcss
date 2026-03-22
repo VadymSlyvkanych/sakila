@@ -1,0 +1,200 @@
+/* =============================================================================
+   styles.tcss — стили приложения Sakila
+   
+   Textual поддерживает CSS-подобный язык стилей (TCSS).
+   Документация: https://textual.textualize.io/guide/CSS/
+   ============================================================================= */
+
+
+/* =============================================================================
+   Вкладки (TabbedContent)
+   ============================================================================= */
+
+Tabs {
+    height: 4;
+}
+
+/* Каждая вкладка занимает равную долю ширины */
+Tabs Tab {
+    width: 1fr;
+    height: 3;
+    content-align: center middle;
+}
+
+/* Убираем внутренние отступы TabPane — управляем отступами сами */
+TabPane {
+    padding: 0;
+}
+
+
+/* =============================================================================
+   Вкладка Search — основной контейнер
+   ============================================================================= */
+
+#main {
+    height: 1fr;
+}
+
+
+/* =============================================================================
+   Строка поиска
+   ============================================================================= */
+
+#search__row {
+    height: auto;
+    margin: 1 2 1 2;
+}
+
+#search__input {
+    width: 1fr;
+    border: none;        /* убираем рамку чтобы выровнять с кнопками */
+    padding: 1 0 1 2;   /* padding: верх право низ лево */
+}
+
+#clear__input {
+    margin-left: 1;      /* отступ между инпутом и кнопкой */
+}
+
+
+/* =============================================================================
+   Строка управления (жанры, годы, сортировка)
+   ============================================================================= */
+
+#controls__row {
+    height: auto;
+    margin: 0 2 1 2;
+}
+
+#label__filters {
+    height: 3;
+    width: auto;
+    padding: 1 1 1 0;
+    color: $text-muted;
+}
+#open__genres { margin-right: 1; }
+#open__years  { margin-right: 1; }
+#label__sort {
+    height: 3;
+    width: auto;
+    padding: 1 1;
+    color: $text-muted;
+}
+#sort__select { width: 24; }
+
+
+/* =============================================================================
+   Кнопки — плоский стиль без рамок
+   ============================================================================= */
+
+Button {
+    border: none;
+    height: 3;
+    padding: 1 1;
+    background: $panel;
+}
+
+Button:focus  { border: none; text-style: bold; }
+Button:hover  { border: none; background: $panel-darken-1; }
+
+/* Варианты цвета кнопок */
+Button.-primary       { background: $primary;         color: $text; }
+Button.-primary:hover { background: $primary-darken-1;              }
+Button.-warning       { background: $warning;         color: $text; }
+Button.-warning:hover { background: $warning-darken-1;              }
+
+
+/* =============================================================================
+   Теги активных фильтров
+   ============================================================================= */
+
+#active__filters {
+    height: auto;
+    margin: 0 2 0 2;
+}
+
+/* Одна горизонтальная строка тегов */
+.tags__row {
+    height: auto;
+}
+
+FilterTag {
+    width: auto;
+    background: $accent;
+    color: $text;
+    padding: 0 1;
+    margin: 0 1 1 0;   /* отступ снизу и справа для переноса строк */
+}
+
+FilterTag:hover { background: $error; }
+
+
+/* =============================================================================
+   Строка статуса (Found: X | Loaded: Y)
+   ============================================================================= */
+
+#status {
+    height: auto;
+    color: $text-muted;
+    margin: 0 2 1 2;
+}
+
+
+/* =============================================================================
+   Список результатов поиска
+   ============================================================================= */
+
+#search__results {
+    height: 1fr;
+    scrollbar-size: 1 1;   /* минимальная ширина скроллбара */
+}
+
+FilmCard {
+    padding: 1;
+    margin: 0 2 1 2;
+    border: round $primary-darken-2;
+    background: $surface;
+}
+
+LoadMoreButton {
+    width: 1fr;
+    margin: 0 2 1 2;
+}
+
+
+/* =============================================================================
+   Вкладка Statistics
+   ============================================================================= */
+
+#stats__container {
+    padding: 1 2;
+}
+
+#stats__buttons {
+    height: auto;
+    margin-bottom: 1;
+}
+
+#stats__buttons Button {
+    margin-right: 1;
+}
+
+/* Строка с общим количеством запросов */
+#stats__total {
+    height: auto;
+    color: $text-muted;
+    margin-bottom: 1;
+}
+
+/* Секция статистики (топ запросов, жанров и т.д.) */
+.stats__section {
+    height: auto;
+    border: round $primary-darken-2;
+    padding: 1;
+    margin-bottom: 1;
+}
+
+/* Заголовок секции */
+.stats__title {
+    text-style: bold;
+    margin-bottom: 1;
+}
