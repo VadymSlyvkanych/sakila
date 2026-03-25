@@ -1,7 +1,7 @@
 # Sakila — Advanced Title Search
 
 > **Финальный проект курса Python** — TUI-приложение для поиска фильмов  
-> по базе данных [Sakila](https://dev.mysql.com/doc/sakila/en/) с аналитикой поисковых запросов.
+> по базе данных Sakila с аналитикой поисковых запросов.
 
 ---
 
