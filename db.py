@@ -39,7 +39,7 @@ class Database:
             yield cur
             self.conn.commit()
         except Exception as e:
-            logging.error(f"Database error: {e}")
+            # logging.error(f"Database error: {e}")
             if self.conn:
                 try:
                     self.conn.rollback()

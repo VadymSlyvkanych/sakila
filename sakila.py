@@ -96,7 +96,7 @@ class SakilaApp(App):
                 with Vertical(id="main"):
                     with Horizontal(id="search__row"):
                         yield Input(id="search__input", placeholder="e.g. Godfather")
-                        yield Button("Clear", id="clear__input", variant="default")
+                        yield Button("Clear", id="clear__input", variant="warning")
                     with Horizontal(id="controls__row"):
                         yield Static("Search filters:", id="label__filters")
                         yield Button("Genres", id="open__genres")
@@ -123,11 +123,11 @@ class SakilaApp(App):
                         yield Button("Clear all", id="stats__clear",   variant="warning")
                     yield Static("", id="stats__total")
                     with Vertical(classes="stats__section"):
-                        yield Static("Top 5 queries", classes="stats__title")
-                        yield Static("", id="stats__top")
-                    with Vertical(classes="stats__section"):
                         yield Static("Last 5 queries", classes="stats__title")
                         yield Static("", id="stats__recent")
+                    with Vertical(classes="stats__section"):
+                        yield Static("Top 5 keywords", classes="stats__title")
+                        yield Static("", id="stats__top")
                     with Vertical(classes="stats__section"):
                         yield Static("Top 5 genres", classes="stats__title")
                         yield Static("", id="stats__genres")
@@ -414,7 +414,7 @@ class SakilaApp(App):
             (список фильмов, общее количество совпадений в БД)
 
         Запрос включает:
-            - FULLTEXT поиск по f.title (требует индекс на film.title)
+            - поиск по f.title
             - фильтр по жанрам (JOIN с category)
             - фильтр по годам выпуска
             - сортировку по релевантности / названию / году
@@ -426,10 +426,12 @@ class SakilaApp(App):
         conditions: list[str] = []
         params:     list[Any] = []
 
-        # FULLTEXT поиск — требует индекс: ALTER TABLE film ADD FULLTEXT (title)
-        if filters.search:
-            conditions.append("MATCH(f.title) AGAINST (%s IN BOOLEAN MODE)")
-            params.append(filters.ft_query())
+        # Поиск по f.title
+        words = [f"%{word}%" for word in filters.search.split()]
+
+        if words:
+            conditions.append(f"({" OR ".join(["(f.title LIKE %s)"] * len(words))})")
+            params.extend(words)
 
         # Фильтр по жанрам через JOIN с таблицей category
         if filters.genres:
@@ -445,11 +447,11 @@ class SakilaApp(App):
 
         where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
 
-        # Определяем сортировку и нужен ли дополнительный параметр для MATCH в SELECT
-        if filters.sort == "relevance" and filters.search:
-            relevance = ", MATCH(f.title) AGAINST (%s IN BOOLEAN MODE) AS relevance"
-            order     = "ORDER BY relevance DESC, f.title"
-            extra     = [filters.ft_query()]  # параметр для MATCH в SELECT
+        # Определяем сортировку
+        if filters.sort == "relevance" and words:
+            relevance = f", ({" + ".join(["(f.title LIKE %s)"] * len(words))}) AS relevance"
+            order = "ORDER BY relevance DESC, f.title"
+            extra = words
         elif filters.sort == "year":
             relevance, order, extra = "", "ORDER BY f.release_year ASC, f.title", []
         else:  # "title" или relevance без текстового запроса
@@ -459,7 +461,7 @@ class SakilaApp(App):
             SELECT COUNT(DISTINCT f.film_id) AS total
             FROM film f
             JOIN film_category fc ON f.film_id = fc.film_id
-            JOIN category      c  ON fc.category_id = c.category_id
+            JOIN category c ON fc.category_id = c.category_id
             {where}
         """
 
@@ -476,7 +478,7 @@ class SakilaApp(App):
                 {relevance}
             FROM film f
             JOIN film_category fc ON f.film_id = fc.film_id
-            JOIN category      c  ON fc.category_id = c.category_id
+            JOIN category c ON fc.category_id = c.category_id
             {where}
             {order}
             LIMIT %s OFFSET %s
@@ -512,10 +514,10 @@ class SakilaApp(App):
             container.mount(FilmCard(start + i, film, search=self.filters.search))
 
         self.offset += len(results)
-
+        
         status.update(
             f"Found: {self.total_found} | Loaded: {self.offset}"
-            if self.total_found else ""
+            if self.total_found else "" if self.filters.is_empty else "Oops! We couldn’t find anything."
         )
 
         # Кнопка "Load more" появляется если загружено меньше чем найдено

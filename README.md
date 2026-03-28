@@ -1,7 +1,6 @@
 # Sakila — Advanced Title Search
 
-> **Финальный проект курса Python** — TUI-приложение для поиска фильмов  
-> по базе данных Sakila с аналитикой поисковых запросов.
+> **Финальный проект курса Python** — TUI-приложение для поиска фильмов по базе данных Sakila с аналитикой поисковых запросов.
 
 ---
 
@@ -22,11 +21,11 @@
 
 Приложение демонстрирует практическое применение Python для разработки терминального интерфейса с подключением к реальным базам данных. В проекте реализованы:
 
-- полнотекстовый поиск через MySQL FULLTEXT индекс
+- поиск по шаблону с использованием оператора LIKE
 - фильтрация по жанрам и годам выпуска с пагинацией результатов
 - сохранение истории поиска в MongoDB
 - аналитика поисковых запросов (топ запросов, жанров, годов)
-- многовкладочный интерфейс с живой статистикой
+- многовкладочный интерфейс
 
 ---
 
@@ -42,7 +41,13 @@ cd sakila
 # 2. Устанавливаем зависимости из pyproject.toml (uv создаёт виртуальное окружение автоматически)
 uv sync
 
-# 3. Запускаем приложение
+# 3. Активируем виртуальное окружение
+source .venv/bin/activate        # macOS / Linux
+# .venv\Scripts\activate         # Windows
+
+# 4. Переименовываем config.example.py в config.py и прописываем в нем настройки подключения к БД
+
+# 5. Запускаем приложение
 uv run sakila.py
 ```
 
@@ -61,7 +66,9 @@ source .venv/bin/activate        # macOS / Linux
 # 3. Устанавливаем зависимости
 pip install textual pymysql pymongo
 
-# 4. Запускаем приложение
+# 4. Переименовываем config.example.py в config.py и прописываем в нем настройки подключения к БД
+
+# 5. Запускаем приложение
 python sakila.py
 ```
 
@@ -89,30 +96,16 @@ sakila_db = MySQLDB(
     host="your-mysql-host",       # адрес сервера MySQL
     user="your-user",             # имя пользователя
     password="your-password",     # пароль
-    database="sakila",            # имя базы данных
+    database="your-db",           # имя базы данных
 )
 
 # --- MongoDB ---
-MONGO_URI = (
-    "mongodb://your-user:your-password@your-mongo-host/"
-    "?authSource=your-auth-db"
-)
-MONGO_COLLECTION = "your-collection-name"
-```
-
-### Полнотекстовый индекс MySQL
-
-Приложение использует FULLTEXT поиск по полю `title` таблицы `film`.  
-Индекс нужно создать один раз:
-
-```sql
-ALTER TABLE film ADD FULLTEXT INDEX fulltext_title (title);
-```
-
-Проверить что индекс создан:
-
-```sql
-SHOW INDEX FROM film WHERE Key_name = 'fulltext_title';
+MONGO_HOST = "your-mongo-host"    # адрес сервера MongoDB
+MONGO_USER = "your-user"          # имя пользователя
+MONGO_PASSWORD = "your-password"  # пароль
+MONGO_AUTH_DB = "your-auth-db"    # имя базы данных аутентификации (где хранятся учетные данные пользователя)
+MONGO_DB = "your-db"              # имя базы данных
+MONGO_COLLECTION = "your-collection-name" # имя коллекции
 ```
 
 ---
@@ -129,7 +122,7 @@ SHOW INDEX FROM film WHERE Key_name = 'fulltext_title';
 
 ### Паттерны и решения
 
-**Singleton для подключения к БД** — класс `Database` в `db.py` реализует паттерн Singleton: повторный вызов `MySQLDB(**config)` с теми же параметрами возвращает уже существующий объект, а не создаёт новое соединение.
+**Singleton для подключения к БД** — класс `Database` в `db.py` реализует паттерн Singleton: повторный вызов `MySQLDB(**config)` с теми же параметрами возвращает уже существующий объект, а не создаёт новое соединение. Singleton здесь гарантирует, что для каждой уникальной конфигурации БД в приложении будет только один объект и одно соединение, что предотвращает избыточное потребление ресурсов и обеспечивает согласованность транзакций.
 
 **Иммутабельные фильтры** — `Filters` объявлен как `@dataclass(frozen=True)`. При изменении фильтров создаётся новый объект через `dc_replace()`. Это делает безопасной передачу фильтров в фоновый поток: поток держит ссылку на старый объект который никто не может изменить.
 
@@ -186,8 +179,8 @@ SakilaApp
 │   │       │   ├── Button "Refresh"               — обновить статистику
 │   │       │   └── Button "Clear all"             — удалить всю статистику
 │   │       ├── Static (#stats__total)             — общее кол-во запросов
-│   │       ├── Vertical (.stats__section)         — Топ 5 запросов
 │   │       ├── Vertical (.stats__section)         — Последние 5 запросов
+│   │       ├── Vertical (.stats__section)         — Топ 5 ключевых слов
 │   │       ├── Vertical (.stats__section)         — Топ 5 жанров
 │   │       └── Vertical (.stats__section)         — Топ 5 годов
 │   │
@@ -216,7 +209,7 @@ SakilaApp
 └── Footer
 ```
 
-### Ключевые компоненты
+### Кастомные компоненты
 
 **`FilterTag`** — кликабельный тег активного фильтра. При клике постит сообщение `FilterTag.Removed` которое `SakilaApp` перехватывает и удаляет соответствующий фильтр.
 
@@ -245,7 +238,7 @@ SakilaApp
 Приложение формирует динамический SQL в зависимости от заполненных фильтров:
 
 ```sql
--- Пример: поиск "batman" в жанре Action за 1990-е, сортировка по релевантности
+-- Пример: поиск "bat for" в жанре Action за 1990-е, сортировка по релевантности
 SELECT
     f.film_id,
     f.title,
@@ -255,12 +248,18 @@ SELECT
     f.length,
     f.rental_rate,
     c.name AS category,
-    MATCH(f.title) AGAINST ('batman*' IN BOOLEAN MODE) AS relevance
+    (
+      (f.title LIKE '%bat%') +
+      (f.title LIKE '%for%')
+    ) AS relevance
 FROM film f
 JOIN film_category fc ON f.film_id = fc.film_id
 JOIN category      c  ON fc.category_id = c.category_id
 WHERE
-    MATCH(f.title) AGAINST ('batman*' IN BOOLEAN MODE)
+    (
+      (f.title LIKE '%bat%')
+      OR (f.title LIKE '%for%')
+    )
     AND c.name IN ('Action')
     AND f.release_year IN (1990, 1991, 1992, ..., 1999)
 ORDER BY relevance DESC, f.title
@@ -276,8 +275,12 @@ FROM film f
 JOIN film_category fc ON f.film_id = fc.film_id
 JOIN category      c  ON fc.category_id = c.category_id
 WHERE
-    MATCH(f.title) AGAINST ('batman*' IN BOOLEAN MODE)
-    AND c.name IN ('Action');
+    (
+      (f.title LIKE '%bat%')
+      OR (f.title LIKE '%for%')
+    )
+    AND c.name IN ('Action')
+    AND f.release_year IN (1990, 1991, 1992, ..., 1999);
 ```
 
 #### Загрузка справочников
@@ -288,18 +291,6 @@ SELECT name FROM category ORDER BY name;
 
 -- Годы выпуска (при старте приложения)
 SELECT DISTINCT release_year FROM film ORDER BY release_year;
-```
-
-#### FULLTEXT индекс
-
-Поиск использует MySQL BOOLEAN MODE — каждое слово получает суффикс `*` для поиска по префиксу. Запрос `"dark knight"` превращается в `"dark* knight*"` что найдёт "Darkness", "Knights" и т.д.
-
-```sql
--- Создание индекса (выполнить один раз)
-ALTER TABLE film ADD FULLTEXT INDEX fulltext_title (title);
-
--- Проверка
-SHOW INDEX FROM film WHERE Key_name = 'fulltext_title';
 ```
 
 ---
@@ -322,11 +313,11 @@ SHOW INDEX FROM film WHERE Key_name = 'fulltext_title';
 
 #### Aggregation pipelines
 
-**Топ-5 текстовых запросов по частоте:**
+**Топ-5 запросов по ключевым словам:**
 
 ```python
 db.collection.aggregate([
-  { $match:  { query: { $ne: "" } } },  // исключаем пустые
+  { $match:  { query: { $ne: "" } } },  // исключаем пустые (когда запрос был только по жанрам и/или годам)
   { $group:  { _id: "$query", count: { $sum: 1 } } },
   { $sort:   { count: -1 } },
   { $limit:  5 }
@@ -361,15 +352,19 @@ db.collection.aggregate([
 
 ### Вкладка Search
 
-![Вкладка Search](./images/Screenshot_01.png)
+![Вкладка Search](./images/Screenshot_01.svg)
 
 ### Модальный экран выбора жанров
 
-![Модальный экран выбора жанров](./images/Screenshot_02.png)
+![Модальный экран выбора жанров](./images/Screenshot_02.svg)
 
 ### Вкладка Statistics
 
-![Вкладка Statistics](./images/Screenshot_03.png)
+![Вкладка Statistics](./images/Screenshot_03.svg)
+
+### Вкладка README
+
+![Вкладка README](./images/Screenshot_04.svg)
 
 ---
 

@@ -19,18 +19,21 @@ sakila_db = MySQLDB(
     host="your-mysql-host",       # адрес сервера MySQL
     user="your-user",             # имя пользователя
     password="your-password",     # пароль
-    database="sakila",            # имя базы данных
+    database="your-db",           # имя базы данных
 )
 
 # =============================================================================
 # MongoDB — хранение истории поисковых запросов
 # =============================================================================
 
-MONGO_URI = (
-    "mongodb://your-user:your-password@your-mongo-host/"
-    "?authSource=your-auth-db"
-)
-MONGO_COLLECTION = "your-collection-name"
+MONGO_HOST = "your-mongo-host"    # адрес сервера MongoDB
+MONGO_USER = "your-user"          # имя пользователя
+MONGO_PASSWORD = "your-password"  # пароль
+MONGO_AUTH_DB = "your-auth-db"    # имя базы данных аутентификации (где хранятся учетные данные пользователя)
+MONGO_DB = "your-db"              # имя базы данных
+MONGO_COLLECTION = "your-collection-name" # имя коллекции
+
+MONGO_URI = f"mongodb://{MONGO_USER}:{MONGO_PASSWORD}@{MONGO_HOST}/?authSource={MONGO_AUTH_DB}"
 
 mongo_client = MongoClient(MONGO_URI)
 
@@ -42,7 +45,7 @@ mongo_client = MongoClient(MONGO_URI)
 #     "years":      list[int],  — выбранные годы
 #     "created_at": datetime    — UTC время создания
 #   }
-searches_col = mongo_client["ich_edit"][MONGO_COLLECTION]
+searches_col = mongo_client[MONGO_DB][MONGO_COLLECTION]
 
 # =============================================================================
 # Прочие константы приложения

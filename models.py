@@ -39,19 +39,6 @@ class Filters:
         """True если ни одно условие поиска не задано — запрос не нужен."""
         return not self.search and not self.genres and not self.years
 
-    def ft_query(self) -> str:
-        """
-        Формирует булевый FULLTEXT запрос для MySQL BOOLEAN MODE.
-
-        Каждое слово получает суффикс * что позволяет искать по префиксу.
-        Это значит "god*" найдёт "Godfather", "Goddess" и т.д.
-
-        Примеры:
-            "dark"        → "dark*"
-            "dark knight" → "dark* knight*"
-        """
-        return " ".join(word + "*" for word in self.search.split())
-
 
 def highlight_terms(text: str, terms: list[str]) -> str:
     """
