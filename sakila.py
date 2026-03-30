@@ -460,8 +460,8 @@ class SakilaApp(App):
         sql_count = f"""
             SELECT COUNT(DISTINCT f.film_id) AS total
             FROM film f
-            JOIN film_category fc ON f.film_id = fc.film_id
-            JOIN category c ON fc.category_id = c.category_id
+            LEFT JOIN film_category fc ON f.film_id = fc.film_id
+            LEFT JOIN category c ON fc.category_id = c.category_id
             {where}
         """
 
@@ -474,15 +474,29 @@ class SakilaApp(App):
                 f.rating,
                 f.length,
                 f.rental_rate,
-                c.name AS category
+                COALESCE(
+                    GROUP_CONCAT(c.name ORDER BY c.name SEPARATOR ', '),
+                    ''
+                ) AS category
                 {relevance}
             FROM film f
-            JOIN film_category fc ON f.film_id = fc.film_id
-            JOIN category c ON fc.category_id = c.category_id
+            LEFT JOIN film_category fc ON f.film_id = fc.film_id
+            LEFT JOIN category c ON fc.category_id = c.category_id
             {where}
+            GROUP BY 
+                f.film_id,
+                f.title,
+                f.description,
+                f.release_year,
+                f.rating,
+                f.length,
+                f.rental_rate
             {order}
             LIMIT %s OFFSET %s
         """
+
+        print(sql_data)
+        print(extra + params + [limit, offset])
 
         total = (sakila_db.query(sql_count, params) or [{"total": 0}])[0]["total"]
         films = sakila_db.query(sql_data, extra + params + [limit, offset])
