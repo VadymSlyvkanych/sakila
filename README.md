@@ -248,13 +248,13 @@ SELECT
   f.length,
   f.rental_rate,
   COALESCE(
-      (
-          SELECT GROUP_CONCAT(c.name ORDER BY c.name SEPARATOR ', ')
-          FROM film_category fc
-          JOIN category c ON c.category_id = fc.category_id
-          WHERE fc.film_id = f.film_id
-      ),
-      ''
+    (
+      SELECT GROUP_CONCAT(c.name ORDER BY c.name SEPARATOR ', ')
+      FROM film_category fc
+      JOIN category c ON c.category_id = fc.category_id
+      WHERE fc.film_id = f.film_id
+    ),
+    ''
   ) AS category
   , ((f.title LIKE 'bat') + (f.title LIKE 'for')) AS relevance
 FROM film f
