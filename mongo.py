@@ -26,7 +26,7 @@ def save_search(filters: Filters) -> None:
         }
     """
     searches_col.insert_one({
-        "query":      filters.search.strip(),
+        "query":      filters.search.strip().lower(),
         "genres":     sorted(filters.genres),
         "years":      sorted(filters.years),
         "created_at": datetime.now(timezone.utc),
@@ -43,8 +43,8 @@ def get_stats() -> dict:
     Возвращаемый словарь:
         {
             "total":       int,         # общее кол-во запросов
-            "top_queries": list[dict],  # топ-5 текстовых запросов по частоте
             "recent":      list[dict],  # 5 последних запросов
+            "top_queries": list[dict],  # топ-5 текстовых запросов по частоте
             "top_genres":  list[dict],  # топ-5 жанров по частоте использования
             "top_years":   list[dict],  # топ-5 годов по частоте использования
         }
@@ -57,21 +57,34 @@ def get_stats() -> dict:
         - top_genres:  $unwind genres (разворачиваем массив) → $group → $sort → $limit
         - top_years:   $unwind years → $group → $sort → $limit
     """
-    # Топ-5 текстовых запросов (пустые строки не считаем)
+
+    # 5 последних уникальных запросов
+    recent = list(searches_col.aggregate([
+        {"$sort": {"created_at": -1}},
+        {
+            "$group": {
+                "_id": {
+                    "query": "$query",
+                    "genres": "$genres",
+                    "years": "$years"
+                },
+                "query": {"$first": "$query"},
+                "genres": {"$first": "$genres"},
+                "years": {"$first": "$years"},
+                "created_at": {"$first": "$created_at"}
+            }
+        },
+        {"$sort": {"created_at": -1}},
+        {"$limit": 5}
+    ]))
+
+    # Топ-5 запросов по ключевым словам
     top_queries = list(searches_col.aggregate([
         {"$match":  {"query": {"$ne": ""}}},
         {"$group":  {"_id": "$query", "count": {"$sum": 1}}},
         {"$sort":   {"count": -1}},
         {"$limit":  5},
     ]))
-
-    # 5 последних запросов по времени
-    recent = list(
-        searches_col
-        .find({}, {"query": 1, "genres": 1, "years": 1, "created_at": 1})
-        .sort("created_at", -1)
-        .limit(5)
-    )
 
     # Топ-5 жанров — $unwind разворачивает массив genres в отдельные документы
     # ["Action", "Drama"] → два документа с genre="Action" и genre="Drama"
@@ -94,8 +107,8 @@ def get_stats() -> dict:
 
     return {
         "total":       total,
-        "top_queries": top_queries,
         "recent":      recent,
+        "top_queries": top_queries,
         "top_genres":  top_genres,
         "top_years":   top_years,
     }

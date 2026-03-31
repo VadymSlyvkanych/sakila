@@ -322,6 +322,28 @@ SELECT DISTINCT release_year FROM film ORDER BY release_year;
 
 #### Aggregation pipelines
 
+**5 последних уникальных запросов:**
+```python
+recent = list(searches_col.aggregate([
+    {"$sort": {"created_at": -1}},
+    {
+        "$group": {
+            "_id": {
+                "query": "$query",
+                "genres": "$genres",
+                "years": "$years"
+            },
+            "query": {"$first": "$query"},
+            "genres": {"$first": "$genres"},
+            "years": {"$first": "$years"},
+            "created_at": {"$first": "$created_at"}
+        }
+    },
+    {"$sort": {"created_at": -1}},
+    {"$limit": 5}
+]))
+```
+
 **Топ-5 запросов по ключевым словам:**
 
 ```python
