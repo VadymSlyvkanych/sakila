@@ -433,10 +433,9 @@ class SakilaApp(App):
             conditions.append(f"({" OR ".join(["(f.title LIKE %s)"] * len(words))})")
             params.extend(words)
 
-        # Фильтр по жанрам через JOIN с таблицей category
         if filters.genres:
             placeholders = ", ".join(["%s"] * len(filters.genres))
-            conditions.append(f"c.name IN ({placeholders})")
+            conditions.append(f"EXISTS (SELECT 1 FROM film_category fc2 JOIN category c2 ON c2.category_id = fc2.category_id WHERE fc2.film_id = f.film_id AND c2.name IN ({placeholders}))")
             params.extend(sorted(filters.genres))
 
         # Фильтр по годам выпуска
@@ -458,10 +457,8 @@ class SakilaApp(App):
             relevance, order, extra = "", "ORDER BY f.title", []
 
         sql_count = f"""
-            SELECT COUNT(DISTINCT f.film_id) AS total
+            SELECT COUNT(f.film_id) AS total
             FROM film f
-            LEFT JOIN film_category fc ON f.film_id = fc.film_id
-            LEFT JOIN category c ON fc.category_id = c.category_id
             {where}
         """
 
@@ -475,22 +472,17 @@ class SakilaApp(App):
                 f.length,
                 f.rental_rate,
                 COALESCE(
-                    GROUP_CONCAT(c.name ORDER BY c.name SEPARATOR ', '),
+                    (
+                        SELECT GROUP_CONCAT(c.name ORDER BY c.name SEPARATOR ', ')
+                        FROM film_category fc
+                        JOIN category c ON c.category_id = fc.category_id
+                        WHERE fc.film_id = f.film_id
+                    ),
                     ''
                 ) AS category
                 {relevance}
             FROM film f
-            LEFT JOIN film_category fc ON f.film_id = fc.film_id
-            LEFT JOIN category c ON fc.category_id = c.category_id
             {where}
-            GROUP BY 
-                f.film_id,
-                f.title,
-                f.description,
-                f.release_year,
-                f.rating,
-                f.length,
-                f.rental_rate
             {order}
             LIMIT %s OFFSET %s
         """

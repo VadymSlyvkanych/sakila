@@ -240,28 +240,35 @@ SakilaApp
 ```sql
 -- Пример: поиск "bat for" в жанре Action за 1990-е, сортировка по релевантности
 SELECT
-    f.film_id,
-    f.title,
-    f.description,
-    f.release_year,
-    f.rating,
-    f.length,
-    f.rental_rate,
-    c.name AS category,
-    (
-      (f.title LIKE '%bat%') +
-      (f.title LIKE '%for%')
-    ) AS relevance
+  f.film_id,
+  f.title,
+  f.description,
+  f.release_year,
+  f.rating,
+  f.length,
+  f.rental_rate,
+  COALESCE(
+      (
+          SELECT GROUP_CONCAT(c.name ORDER BY c.name SEPARATOR ', ')
+          FROM film_category fc
+          JOIN category c ON c.category_id = fc.category_id
+          WHERE fc.film_id = f.film_id
+      ),
+      ''
+  ) AS category
+  , ((f.title LIKE 'bat') + (f.title LIKE 'for')) AS relevance
 FROM film f
-JOIN film_category fc ON f.film_id = fc.film_id
-JOIN category      c  ON fc.category_id = c.category_id
-WHERE
-    (
-      (f.title LIKE '%bat%')
-      OR (f.title LIKE '%for%')
-    )
-    AND c.name IN ('Action')
-    AND f.release_year IN (1990, 1991, 1992, ..., 1999)
+WHERE 
+  ((f.title LIKE 'bat') OR (f.title LIKE 'for')) 
+  AND EXISTS (
+    SELECT 1 
+    FROM film_category fc2 
+    JOIN category c2 ON c2.category_id = fc2.category_id 
+    WHERE 
+      fc2.film_id = f.film_id 
+      AND c2.name IN ('Action')
+  ) 
+  AND f.release_year IN (1990, 1991, 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999)
 ORDER BY relevance DESC, f.title
 LIMIT 10 OFFSET 0;
 ```
@@ -272,15 +279,17 @@ LIMIT 10 OFFSET 0;
 -- Выполняется перед основным запросом чтобы знать общее количество
 SELECT COUNT(DISTINCT f.film_id) AS total
 FROM film f
-JOIN film_category fc ON f.film_id = fc.film_id
-JOIN category      c  ON fc.category_id = c.category_id
-WHERE
-    (
-      (f.title LIKE '%bat%')
-      OR (f.title LIKE '%for%')
-    )
-    AND c.name IN ('Action')
-    AND f.release_year IN (1990, 1991, 1992, ..., 1999);
+WHERE 
+  ((f.title LIKE 'bat') OR (f.title LIKE 'for')) 
+  AND EXISTS (
+    SELECT 1 
+    FROM film_category fc2 
+    JOIN category c2 ON c2.category_id = fc2.category_id 
+    WHERE 
+      fc2.film_id = f.film_id 
+      AND c2.name IN ('Action')
+  ) 
+  AND f.release_year IN (1990, 1991, 1992, 1993, 1994, 1995, 1996, 1997, 1998, 1999);
 ```
 
 #### Загрузка справочников
