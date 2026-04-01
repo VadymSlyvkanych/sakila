@@ -256,10 +256,10 @@ SELECT
     ),
     ''
   ) AS category
-  , ((f.title LIKE 'bat') + (f.title LIKE 'for')) AS relevance
+  , ((f.title LIKE '%bat%') + (f.title LIKE '%for%')) AS relevance
 FROM film f
 WHERE 
-  ((f.title LIKE 'bat') OR (f.title LIKE 'for')) 
+  ((f.title LIKE '%bat%') OR (f.title LIKE '%for%')) 
   AND EXISTS (
     SELECT 1 
     FROM film_category fc2 
