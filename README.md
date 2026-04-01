@@ -280,7 +280,7 @@ LIMIT 10 OFFSET 0;
 SELECT COUNT(DISTINCT f.film_id) AS total
 FROM film f
 WHERE 
-  ((f.title LIKE 'bat') OR (f.title LIKE 'for')) 
+  ((f.title LIKE '%bat%') OR (f.title LIKE '%for%')) 
   AND EXISTS (
     SELECT 1 
     FROM film_category fc2 
